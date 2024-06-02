@@ -1,0 +1,11 @@
+{
+  device_list (name: "{{ inventory_hostname }}") {
+   	name
+    interfaces (name__isw: "Vlan"  tag__n: "dia") {
+      name
+      ip_addresses {
+        display
+      }
+    }
+  }
+}

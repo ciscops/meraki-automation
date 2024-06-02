@@ -1,0 +1,30 @@
+port_template_tags: ['infra']
+port_templates:
+  default:
+    enabled: true
+    poeEnabled: true
+    type: access
+    vlan: 10
+    isolationEnabled: false
+    rstpEnabled: true
+    stpGuard: disabled
+    linkNegotiation: Auto negotiate
+    portScheduleId: 
+    udld: Alert only
+    accessPolicyType: Custom access policy
+    accessPolicyNumber: 1
+    daiTrusted: false
+  infra:
+    enabled: true
+    poeEnabled: true
+    type: trunk
+    vlan: 1
+    allowedVlans: all
+    isolationEnabled: false
+    rstpEnabled: true
+    stpGuard: disabled
+    linkNegotiation: Auto negotiate
+    udld: Alert only
+    accessPolicyType: Open
+    daiTrusted: false
+    # dropUntaggedTraffic: false

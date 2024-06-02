@@ -1,0 +1,22 @@
+#jinja2: lstrip_blocks: True
+{# devices:#}
+{# Go through each of the hosts and compare the changes #}
+{% set consolidated_report = [] %}
+{% set online_devices = [] %}
+{% set offline_devices = [] %}
+{% for device in devices_status %}
+    {% if device["status"] == "online" %}
+        {% set _ = online_devices.append(device["name"]) %}
+    {% else %}
+        {% set _ = offline_devices.append(device["name"]) %}
+    {% endif %}
+{% endfor %}
+consolidated_report:
+    online:
+    {% for entry in online_devices %}
+        - "{{ entry }}"
+    {% endfor %}
+    offline: "{{ online_devices }}"
+    {% for entry in offline_devices %}
+        - "{{ entry }}"
+    {% endfor %}

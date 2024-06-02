@@ -1,0 +1,67 @@
+- hosts: network
+  connection: local
+  gather_facts: no
+  vars:
+    wait: false
+    until_retries: 60
+    until_delay: 10
+  tasks:
+    - name: Get all Device Statuses
+      cisco.meraki.organizations_devices_statuses_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkIds: "{{ [networkId] }}"
+        organizationId: "{{ organizationId }}"
+      register: devices_status_result
+      retries: "{{ until_retries }}"
+      delay: "{{ until_delay }}"
+      until: not wait or devices_status_result.meraki_response | rejectattr('status', 'equalto', 'online') | list | length == 0
+
+    - debug:
+        msg: "{{ devices_status_result.meraki_response | jq_filter(jq_filter) | first }}"
+      vars:
+        jq_filter: "{{ lookup('template', 'status-report.jq') }}"
+
+    # - name: Get Appiance
+    #   uri:
+    #     url: "{{ meraki_base_url }}/organizations/{{ organizationId }}/uplinks/statuses?networkIds[]={{ networkId }}"
+    #     method: GET
+    #     return_content: yes
+    #     headers:
+    #       X-Cisco-Meraki-API-Key: "{{ meraki_api_key }}"
+    #     body_format: json
+    #     body: ""
+    #   register: uplink_status_result
+      # retries: "{{ retries }}"
+      # delay: "{{ delay }}"
+      # until: not wait or sdwan_result["json"][0]["merakiVpnPeers"] | rejectattr('reachability', 'equalto', 'reachable') | list | length == 0
+      # tags:
+      #   - sdwan
+
+    # - debug:
+    #     var: sdwan_result["json"][0]["merakiVpnPeers"]
+
+    - name: Get all organizations _devices _uplinks _addresses _bydevice
+      cisco.meraki.organizations_devices_uplinks_addresses_by_device_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkIds: "{{ [networkId] }}"
+        organizationId: "{{ organizationId }}"
+      register: uplinks_addresses_result
+
+    - name: Get SDWAN Status
+      uri:
+        url: "{{ meraki_base_url }}/organizations/{{ organizationId }}/appliance/vpn/statuses?networkIds[]={{ networkId }}"
+        method: GET
+        return_content: yes
+        headers:
+          X-Cisco-Meraki-API-Key: "{{ meraki_api_key }}"
+        body_format: json
+        body: ""
+      register: sdwan_result
+      retries: "{{ until_retries }}"
+      delay: "{{ until_delay }}"
+      until: not wait or sdwan_result["json"][0]["merakiVpnPeers"] | rejectattr('reachability', 'equalto', 'reachable') | list | length == 0
+      tags:
+        - sdwan
+
+    - debug:
+        var: sdwan_result["json"][0]["merakiVpnPeers"]

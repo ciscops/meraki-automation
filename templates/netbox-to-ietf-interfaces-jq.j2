@@ -1,0 +1,52 @@
+.interfaces[] | {
+    name: .name,
+    type: (
+        # Determine the interface type based on the interface name
+        if .name | contains("Ethernet") then "iana-if-type:ethernetCsmacd"
+        else "iana-if-type:softwareLoopback"
+        end
+    ),
+    "ietf-ip:ipv4": (
+        # Check if ip_addresses array is not empty and contains IPv4 addresses
+        if (.ip_addresses | length > 0) and any(.ip_addresses[].family.value; . == 4) then
+            {
+                address: [
+                    # Extract IPv6 addresses and prefix lengths
+                    .ip_addresses[] | select(.family.value == 4) | {
+                        ip: (.address | split("/")[0]),
+                        netmask: (
+                            if .address | split("/")[1] | tonumber > 23 then
+                                "255.255.255." + (256 - pow(2; 32 - (.address | split("/")[1] | tonumber)) | tostring)
+                            elif .address | split("/")[1] | tonumber > 15 then
+                                "255.255." + (256 - pow(2; 24 - (.address | split("/")[1] | tonumber)) | tostring) + ".0"
+                            elif .address | split("/")[1] | tonumber > 7 then
+                                "255." + (256 - pow(2; 16 - (.address | split("/")[1] | tonumber)) | tostring) + ".0.0"
+                            else
+                                (256 - pow(2; 8 - (.address | split("/")[1] | tonumber)) | tostring) + ".0.0.0"
+                            end
+                        )
+                    }
+                ]
+            }
+        else
+            {} # Empty object if no IPv4 addresses
+        end
+    ),
+    "ietf-ip:ipv6": (
+        # Check if ip_addresses array is not empty and contains IPv6 addresses
+        if (.ip_addresses | length > 0) and any(.ip_addresses[].family.value; . == 6) then
+            {
+                address: [
+                    # Extract IPv6 addresses and prefix lengths
+                    .ip_addresses[] | select(.family.value == 6) | {
+                        ip: (.address | split("/")[0]),
+                        "prefix-length": (.address | split("/")[1] | tonumber)
+                    }
+                ]
+            }
+        else
+            {} # Empty object if no IPv6 addresses
+        end
+    ),
+    enabled: .enabled
+}

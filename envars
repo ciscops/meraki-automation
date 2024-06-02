@@ -1,0 +1,11 @@
+# export ANSIBLE_COLLECTIONS_PATH=./
+export ANSIBLE_PYTHON_INTERPRETER=${VIRTUAL_ENV}/bin/python3
+export ANSIBLE_INVENTORY_PLUGINS=./inventory_plugins
+export NETBOX_API=https://netbox2.aws.ciscops.net
+export NETBOX_TOKEN=7d44db7af855c058e90cb29327280b62c3c8a203
+export MERAKI_DASHBOARD_API_KEY=dae92154f8514d4683c4d4f0a7a36b2816ff8044
+export MERAKI_ORG_ID=1155173304420532452
+export MERAKI_BASE_URL=https://api.gov-meraki.com/api/v1
+# export MERAKI_DASHBOARD_API_KEY=95b253542de101cb16a2b41a231afda92648b35a
+# export MERAKI_ORG_ID=572081
+# export MERAKI_BASE_URL=https://api.meraki.com/api/v1

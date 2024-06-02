@@ -1,0 +1,19 @@
+proto_network: "cpn-arlington"
+site_vlans:
+  - parent: "100.101.0.0/16"
+    prefix_length: 24
+    name: Infrastructure
+    useVpn: true
+    vlan: 1
+  - parent: "192.133.172.0/22"
+    prefix_length: 26
+    name: Data
+    useVpn: true
+    vlan: 10
+  - parent: "192.168.0.0/16"
+    prefix_length: 24
+    name: Guest
+    useVpn: false
+    vlan: 40
+site_ipv6_prefix_parent: "2602:f98b:20::/44"
+site_ipv6_prefix_length: 48

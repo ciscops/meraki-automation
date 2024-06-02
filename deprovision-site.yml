@@ -1,0 +1,51 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    netbox_token_secret: "cpn/netbox.NETBOX_TOKEN"
+    netbox_url_secret: "cpn/netbox.NETBOX_API"
+  tasks:
+    - debug:
+        msg: "Deprovisioning site {{ site_name }}"
+
+    - set_fact:
+        netbox_prefixes: "{{ query('netbox.netbox.nb_lookup', 'prefixes', api_filter=nb_filter) | jq_filter(jq_filter) | first }}"
+      vars:
+        nb_filter: "site={{ site_name }} address_family=ipv4"
+        jq_filter: '. | map({ (.value.vlan.vid // "ipv6" | tostring ): .value.display }) | add'
+
+    - name: Delete Site Prefixes
+      netbox.netbox.netbox_prefix:
+        netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+        netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}"
+        data:
+          prefix: "{{ item.value }}"
+        state: absent
+      loop: "{{ netbox_prefixes | dict2items }}"
+
+    - name: Delete Netbox Site
+      netbox.netbox.netbox_site:
+        netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+        netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}"
+        data:
+          name: "{{ site_name }}"
+        state: absent    
+      register: netbox_site_results
+
+    - name: Delete Meraki Network
+      cisco.meraki.networks:
+        meraki_base_url: "{{ meraki_base_url }}"
+        organizationId: "{{ meraki_org_id }}"
+        state: absent
+        name: "{{ site_name }}"  
+      register: meraki_network_results
+
+    - name: Remove Site from ISE
+      cisco.ise.network_device:
+        ise_hostname: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_hostname', nested=true) }}"
+        ise_username: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_username', nested=true) }}"
+        ise_password: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_password', nested=true) }}"
+        ise_verify:   false
+        ise_debug:    false
+        state:        absent
+        name:         "{{ site_name }}"

@@ -1,0 +1,180 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    netbox_token_secret: "cpn/netbox.NETBOX_TOKEN"
+    netbox_url_secret: "cpn/netbox.NETBOX_API"
+    proto_network: "cpn-gov-arlington"
+  tasks:
+    - debug:
+        msg: "Provisioning site {{ site_name }}"
+
+    - name: Create Netbox Site
+      netbox.netbox.netbox_site:
+        netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+        netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}"
+        data:
+          name: "{{ site_name }}"
+          custom_fields:
+            site_type: branch
+        state: present    
+      register: netbox_site_results
+
+    - set_fact:
+        netbox_prefixes: "{{ query('netbox.netbox.nb_lookup', 'prefixes', api_filter=nb_filter) | jq_filter(jq_filter) | first }}"
+        proto_network_info: "{{ lookup('meraki_network', proto_network )  }}"
+      vars:
+        nb_filter: "site={{ site_name }} address_family=ipv4"
+        jq_filter: '. | map({ (.value.vlan.vid // "ipv6" | tostring ): .value.display }) | add'
+      tags:
+        - always
+
+    - name: Check to make sure that we found the proto network information
+      ansible.builtin.assert:
+        that:
+          - "'id' in proto_network_info"
+          - proto_network_info.id
+        msg: "Did not find proto network {{ proto_network }}"
+
+    - name: Allocate Site IPv4 Subnets
+      netbox.netbox.netbox_prefix:
+        netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+        netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}"
+        data:
+          parent: "{{ item.parent }}"
+          prefix_length: "{{ item.prefix_length }}"
+          description: "{{ site_name }} - {{ item.name }}"
+          site: "{{ site_name }}"
+          vlan:
+            name: "{{ item.name }}"
+        state: present
+        first_available: yes
+      loop: "{{ site_vlans }}"
+      when: item.vlan | string not in netbox_prefixes
+
+    - name: Allocate Site IPv6 Prefixes
+      netbox.netbox.netbox_prefix:
+        netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+        netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}"
+        data:
+          parent: "{{ site_ipv6_prefix_parent }}"
+          prefix_length: "{{ site_ipv6_prefix_length }}"
+          description: "{{ site_name }} - IPv6 Prefix"
+          site: "{{ site_name }}"
+        state: present
+        first_available: yes
+      when: "'ipv6' not in netbox_prefixes"
+
+    - name: Allocate IPv6 Prefixes
+      set_fact:
+        netbox_prefixes: "{{ query('netbox.netbox.nb_lookup', 'prefixes', api_filter=nb_filter) | jq_filter(jq_filter) | first }}"
+      vars:
+        nb_filter: "site={{ site_name }} address_family=ipv4"
+        jq_filter: '. | map({ (.value.vlan.vid // "ipv6" | tostring ): .value.display }) | add'
+
+    - name: Create Meraki Network
+      cisco.meraki.networks:
+        meraki_base_url: "{{ meraki_base_url }}"
+        organizationId: "{{ meraki_org_id }}"
+        state: present
+        copyFromNetworkId: "{{ proto_network_info.id }}"
+        productTypes: "{{ proto_network_info.productTypes }}"
+        name: "{{ site_name }}"
+        notes: Added by Ansible
+        tags:
+          - branch        
+      register: meraki_network_results
+      tags:
+        - always
+
+    - name: Create Meraki Network VLANs
+      cisco.meraki.networks_appliance_vlans:
+        meraki_base_url: "{{ meraki_base_url }}"
+        state: present
+        applianceIp: "{{ netbox_prefixes[item.vlan | string] | ansible.utils.next_nth_usable(1) }}"
+        cidr: "{{ netbox_prefixes[item.vlan | string] }}"
+        # groupPolicyId: '101'
+        id: "{{ item.vlan }}"
+        ipv6:
+          enabled: true
+          prefixAssignments:
+            - autonomous: true
+              disabled: false
+              origin:
+                type: independent
+        mask: "{{ item.prefix_length }}"
+        name: "{{ item.name }}"
+        networkId: "{{ meraki_network_results.meraki_response.id }}"
+        subnet: "{{ netbox_prefixes[item.vlan | string] }}"
+      loop: "{{ site_vlans }}"
+
+    - name: Get Meraki Network IPv6 Prefixes
+      cisco.meraki.networks_appliance_prefixes_delegated_statics_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkId: "{{ meraki_network_results.meraki_response.id }}"
+      register: appliance_prefix_results
+
+
+    - name: Assign Meraki Network IPv6 Prefixes
+      cisco.meraki.networks_appliance_prefixes_delegated_statics:
+        meraki_base_url: "{{ meraki_base_url }}"
+        state: present
+        description: CPN IPv6 Prefix Assignment
+        networkId: "{{ meraki_network_results.meraki_response.id }}"
+        origin:
+          type: independent
+        prefix: "{{ netbox_prefixes.ipv6 }}"
+        staticDelegatedPrefixId: 1
+      when: appliance_prefix_results.meraki_response | length == 0
+
+    - name: Get Prototype Network SDWAN
+      cisco.meraki.networks_appliance_vpn_site_to_site_vpn_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkId: "{{ proto_network_info.id }}"
+      register: proto_networks_wireless_ssids_result
+      tags:
+        - sdwan
+
+    - name: Update Target Network SDWAN
+      cisco.meraki.networks_appliance_vpn_site_to_site_vpn:
+        meraki_base_url: "{{ meraki_base_url }}"
+        hubs: "{{ proto_networks_wireless_ssids_result.meraki_response.hubs }}"
+        mode: "{{ proto_networks_wireless_ssids_result.meraki_response.mode }}"
+        subnets: "{{ subnets }}"
+        networkId: "{{ meraki_network_results.meraki_response.id }}"
+      vars:
+        subnets: >-
+          [
+          {%- for vlan in site_vlans %}
+          {
+            "localSubnet": "{{ netbox_prefixes[vlan.vlan | string] }}",
+            "useVpn": {{ vlan.useVpn }}
+          }
+          {%- if not loop.last %},{% endif %}
+          {%- endfor %}
+          ]
+      tags:
+        - sdwan
+
+    - name: Add Site to ISE
+      cisco.ise.network_device:
+        ise_hostname: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_hostname', nested=true) }}"
+        ise_username: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_username', nested=true) }}"
+        ise_password: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_password', nested=true) }}"
+        ise_verify:   false
+        ise_debug:    false
+        state:        "present"
+        name:         "{{ site_name }}"
+        description:  "{{ site_name }}"
+        # Need to fix this. The Ansible module will not convert to an integer and Ansible
+        # is not great at that.  We either need to submit a change to the Ansible Collection
+        # or just call the API directly.
+        NetworkDeviceIPList:
+          - ipaddress: "{{ netbox_prefixes['1'].split('/')[0] }}"
+            mask: 24
+        authenticationSettings:
+          networkProtocol: "RADIUS"
+          radiusSharedSecret: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.radius_secret', nested=true) }}"
+      tags:
+        - ise
+      

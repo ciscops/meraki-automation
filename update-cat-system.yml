@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://json.schemastore.org/ansible-playbook.json
+- hosts: platforms_cat8000, platforms_cat9000
+  connection: local
+  gather_facts: no
+  roles:
+    - ciscops.mdd.data
+  tasks:
+    # - name: Get device interface from Netbox
+    #   uri:
+    #     url: "{{ netbox_secrets.NETBOX_API }}/graphql/"
+    #     method: POST
+    #     headers:
+    #       Authorization: 'Token {{ netbox_secrets.NETBOX_TOKEN }}'
+    #     body_format: json
+    #     body:
+    #       query: '{{ lookup("template", "netbox-interfaces-gql.j2") }}'
+    #   register: graphql_results
+
+    # - name: Convert the graphql results from netbox into ietf-interfaces
+    #   set_fact:
+    #     restconf_content: "{{ query_output }}"
+    #   vars:
+    #     query: '{{ lookup("template", "netbox-to-ios-xe-native-jq.j2") }}'
+    #     query_output: "{{ graphql_results.json.data.device_list[0] | jq_filter(query) }}"
+
+    - set_fact:
+        payload:
+          'Cisco-IOS-XE-native:native':
+            # service: '{{ mdd_data["Cisco-IOS-XE-native:native"]["service"] }}'
+            hostname: '{{ mdd_data["Cisco-IOS-XE-native:native"]["hostname"] }}'
+            username: '{{ mdd_data["Cisco-IOS-XE-native:native"]["username"] }}'
+            vrf: '{{ mdd_data["Cisco-IOS-XE-native:native"]["vrf"] }}'
+            ip:
+              domain: '{{ mdd_data["Cisco-IOS-XE-native:native"]["ip"]["domain"] }}'
+              "name-server": '{{ mdd_data["Cisco-IOS-XE-native:native"]["ip"]["name-server"] }}'
+              scp: '{{ mdd_data["Cisco-IOS-XE-native:native"]["ip"]["scp"] }}'
+              ssh: '{{ mdd_data["Cisco-IOS-XE-native:native"]["ip"]["ssh"] }}'
+              "access-list": '{{ mdd_data["Cisco-IOS-XE-native:native"]["ip"]["access-list"] }}'
+              "Cisco-IOS-XE-http:http": '{{ mdd_data["Cisco-IOS-XE-native:native"]["Cisco-IOS-XE-http:http"] }}'
+            cdp: '{{ mdd_data["Cisco-IOS-XE-native:native"]["cdp"] }}'
+            logging: '{{ mdd_data["Cisco-IOS-XE-native:native"]["logging"] }}'
+            aaa: '{{ mdd_data["Cisco-IOS-XE-native:native"]["aaa"] }}'
+            login: '{{ mdd_data["Cisco-IOS-XE-native:native"]["login"] }}'
+            line: '{{ mdd_data["Cisco-IOS-XE-native:native"]["line"] }}'
+            "Cisco-IOS-XE-lldp:lldp": '{{ mdd_data["Cisco-IOS-XE-native:native"]["Cisco-IOS-XE-lldp:lldp"] }}'
+            ntp: '{{ mdd_data["Cisco-IOS-XE-native:native"]["ntp"] }}'
+
+    - debug:
+        var: payload
+
+
+    # - name: Convert the graphql results into a list of network cidrs, then convert that into the subnets structure for the site2sitevpn call
+    #   set_fact:
+    #     system_data: "{{ hostvars[inventory_hostname]['Cisco-IOS-XE-native:native'] | jq_filter(query) }}"
+    #   vars:
+    #     query1: '.interfaces[] | .ip_addresses[] | select(.display | test("\\.")) | .display'
+    #     query2: '.[] | { "localSubnet": ., "useVpn": true }'
+
+    - name: Configure Interfaces
+      uri:
+        url: "https://{{ ansible_host }}/restconf/data/Cisco-IOS-XE-native:native"
+        user: "{{ lookup('amazon.aws.aws_secret', 'cpn/restconf.username', nested=true) }}"
+        password: "{{ lookup('amazon.aws.aws_secret', 'cpn/restconf.password', nested=true) }}"
+        method: PATCH
+        headers:
+          Content-Type: 'application/yang-data+json'
+          Accept:
+            application/yang-data+json,
+            application/yang-data.errors+json
+        body_format: json
+        body: "{{ payload | to_json }}"
+        validate_certs: false
+        status_code:
+         - 200
+         - 204

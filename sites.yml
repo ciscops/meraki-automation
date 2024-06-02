@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://json.schemastore.org/ansible-playbook.json
+- hosts: all
+  connection: local
+  gather_facts: no
+  run_once: yes
+  tasks:
+    - debug:
+        msg: "{{ inventory_hostname }}, Address: {{ ansible_host | default('unknown')}}"
+    # - debug:
+    #     var: hostvars[inventory_hostname]

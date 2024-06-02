@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://json.schemastore.org/ansible-playbook.json
+- hosts: MX
+  connection: local
+  gather_facts: no
+  tasks:
+
+    # - name: Get all networks _appliance _vlans
+    #   cisco.meraki.networks_appliance_vlans_info:
+    #     meraki_api_key: "{{ meraki_api_key }}"
+    #     networkId: "{{ networkId }}"
+    #   register: result
+
+    # - name: Show results
+    #   debug:
+    #     var: result
+
+    - name: Get Secrets
+      set_fact:
+        netbox_secrets: "{{ lookup('amazon.aws.aws_secret', 'cpn/netbox') }}"
+
+    - name: Get the Vlan interfaces without the "dia" tag
+      uri:
+        url: "{{ netbox_secrets.NETBOX_API }}/graphql/"
+        method: POST
+        headers:
+          Authorization: 'Token {{ netbox_secrets.NETBOX_TOKEN }}'
+        body_format: json
+        body:
+          query: '{{ lookup("template", "get_sdwan_interfaces_graphql.j2") }}'
+      register: graphql_results
+
+    - name: Convert the graphql results into a list of network cidrs, then convert that into the subnets structure for the site2sitevpn call
+      set_fact:
+        subnets: "{{ graphql_results.json.data.device_list[0] | jq_filter(query1) | map('ansible.utils.ipaddr', 'network/prefix') | jq_filter(query2) }}"
+      vars:
+        query1: '.interfaces[] | .ip_addresses[] | select(.display | test("\\.")) | .display'
+        query2: '.[] | { "localSubnet": ., "useVpn": true }'
+
+    - name: Add subnet to hub for VPN
+      cisco.meraki.networks_appliance_vpn_site_to_site_vpn:
+        meraki_api_key: "{{ meraki_api_key }}"
+        state: present
+        networkId: "{{ networkId }}"
+        mode: spoke
+        hubs: "{{ vpn.siteToSiteVpn.hubs }}"
+        subnets: "{{ subnets }}"
+

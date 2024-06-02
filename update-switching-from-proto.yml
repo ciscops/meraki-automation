@@ -1,0 +1,59 @@
+- hosts: all
+  connection: local
+  gather_facts: no
+  run_once: true
+  tasks:
+    - set_fact:
+        proto_network_id: "{{ hostvars[proto_network].networkId }}"
+
+    - name: Check to make sure that we found the proto network information
+      ansible.builtin.assert:
+        that:
+          - proto_network_id
+        msg: "Did not find proto network {{ proto_network }}"
+
+    - debug:
+        var: proto_network_id
+
+    - name: Get Radius Secret
+      set_fact:
+        radius_secret: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.radius_secret', nested=true) }}"
+
+    - name: Get Access Policies from proto network
+      cisco.meraki.networks_switch_access_policies_info:
+        meraki_base_url: "{{ meraki_secrets.MERAKI_BASE_URL }}"
+        networkId: "{{ proto_network_id }}"
+      register: proto_access_policies_info
+
+    - name: Process output
+      set_fact:
+        access_policies: "{{ proto_access_policies_info.meraki_response | jq_filter(jq_filter) | first }}"
+      vars:
+        jq_filter: "map(del({{ del_keys | join(',') }}) + {{ add_keys | to_json }})"
+        del_keys:
+          - ".counts"
+          - ".radiusAccountingServers"
+          - ".radiusServers"
+          - ".authenticationMethod"
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_secrets.MERAKI_BASE_URL }}"
+          networkId: "{{ networkId }}"
+          radiusServers:
+            - host: 100.100.80.27
+              port: 1812
+              secret: "{{ radius_secret }}"
+          radiusAccountingServers:
+            - host: 100.100.80.27
+              port: 1813
+              secret: "{{ radius_secret }}"
+
+- hosts: network
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Update Access Policies
+      cisco.meraki.networks_switch_access_policies: "{{ item }}"
+      loop: "{{ access_policies }}"
+
+

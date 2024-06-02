@@ -1,0 +1,30 @@
+{
+  device_list (name: "{{ inventory_hostname }}" ) {
+    name
+    interfaces {
+      name
+      description
+      enabled
+      type
+      vrf {
+        name
+      }
+      tags {
+        id
+      }
+      tagged_vlans {
+        vid
+      }
+      untagged_vlan {
+        vid
+      }
+      mode
+      ip_addresses {
+        address
+        family {
+          value
+        }
+      }
+    }
+  }
+}

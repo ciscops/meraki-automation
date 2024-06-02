@@ -1,0 +1,26 @@
+- hosts: MX
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Get port information
+      cisco.meraki.networks_appliance_ports_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkId: "{{ networkId }}"
+      register: port_info
+
+    - name: Update Ports
+      cisco.meraki.networks_appliance_ports:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkId: "{{ networkId }}"
+        state: present
+        portId: "{{ item.number }}"
+        enabled: true
+        vlan: "{{ template.vlan | default(omit) }}"
+        allowedVlans: "{{ template.allowedVlans | default(omit) }}"
+        dropUntaggedTraffic: "{{ template.dropUntaggedTraffic | default(omit) }}"
+        type: "{{ template.type | default(omit) }}"
+      loop: "{{ port_info.meraki_response }}"
+      vars:
+        template: "{{ port_templates['infra'] }}"
+
+

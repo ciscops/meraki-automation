@@ -1,0 +1,35 @@
+- hosts: network
+  connection: local
+  gather_facts: no
+  run_once: yes
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | split(',') | length == 1
+        msg: "This playbook is meant to run against a single network specified with `--limit`"
+
+    - name: Get All Organization Devices
+      cisco.meraki.organizations_devices_statuses_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkIds: "{{ [networkId] }}"
+        organizationId: "{{ organizationId }}"
+      register: devices_status_result
+
+    - name: Get New Serials
+      set_fact:
+        new_serials: "{{ serials | split(',') | difference(existing_serials) }}"
+      vars:
+        existing_serials: >-
+          {{
+              devices_status_result.meraki_response
+                            | map(attribute='serial')
+                            | list
+          }}
+
+    - name: Claim Devices
+      cisco.meraki.networks_devices_claim:
+        meraki_base_url: "{{ meraki_base_url }}"
+        networkId: "{{ networkId }}"
+        serials: "{{ new_serials }}"
+      when: new_serials | length > 0

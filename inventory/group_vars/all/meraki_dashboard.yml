@@ -1,0 +1,6 @@
+# tenant: cpn
+# meraki_account: meraki-gov
+# meraki_secret_path: "{{ tenant }}/{{ meraki_account }}"
+# meraki_secrets: "{{ lookup('amazon.aws.aws_secret', meraki_secret_path) }}"
+meraki_base_url: "{{ lookup('ansible.builtin.env', 'MERAKI_BASE_URL') }}"
+meraki_org_id: "{{ lookup('ansible.builtin.env', 'MERAKI_ORG_ID') }}"

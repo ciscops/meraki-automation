@@ -1,0 +1,15 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Update CMDB
+      uri:
+        url: "{{ lookup('ansible.builtin.env', 'NETBOX_API') }}/api/extras/scripts/update_meraki_devices.UpdateMerakiDevices/"
+        method: POST
+        headers:
+          Authorization: 'Token {{ lookup("ansible.builtin.env", "NETBOX_TOKEN") }}'
+        body_format: json
+        body:
+           commit: true
+           data: {}
+      register: script_results

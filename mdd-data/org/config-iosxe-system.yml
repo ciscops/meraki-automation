@@ -1,0 +1,237 @@
+---
+mdd_tags:
+  - iosxe
+mdd_data:
+  Cisco-IOS-XE-native:native:
+    hostname: "{{ inventory_hostname }}"
+    username:
+      - name: admin
+        privilege: 15
+        password:
+          encryption: '7'
+          password: 040E5D4C286B62165E332B220A
+      - name: chocker
+        privilege: 15
+      - name: meraki-user
+        privilege: 15
+        secret:
+          encryption: '9'
+          secret: "$9$gsB5I4wpvCfC/g$7OI6fp6mcCbKsdg8jvi/cWWzpIM533Zt1VrGnNOfGMk"
+      - name: restuser
+        privilege: 15
+        password:
+          encryption: '7'
+          password: '00281C3C2F032A125D1179791A0F032F3E393B343023772C05'
+      - name: stevenca
+        privilege: 15
+    vrf:
+      definition:
+        - name: Mgmt-vrf
+          address-family:
+            ipv4: {}
+            ipv6: {}
+        - name: mx-sdwan-dmz
+          rd: '1:1'
+          address-family:
+            ipv4: {}
+            ipv6: {}
+    ip:
+      domain:
+        name: 'ciscops.net'
+      name-server:
+        no-vrf:
+          - 208.67.220.220
+          - 208.67.222.222
+      ssh:
+        pubkey-chain:
+          username:
+            - name: chocker
+              key-hash:
+                - key-type: ssh-rsa
+                  key-hash-value: FF5ABEA629004E51871230E378B95C37
+            - name: meraki-user
+              key-hash:
+                - key-type: ssh-rsa
+                  key-hash-value: C298AF41B1B16C2ED20B40B1B75FC3BC
+            - name: stevenca
+              key-hash:
+                - key-type: ssh-rsa
+                  key-hash-value: F79E78FA3ABEFE44AA032967E96B0C7D
+        ssh-version: '2'
+        version: 2
+        port:
+          - port-no: 2222
+            low-rotary: 50
+      scp:
+        server:
+          enable:
+            - 
+      access-list:
+        Cisco-IOS-XE-acl:standard:
+          - name: mgmt
+            access-list-seq-rule:
+              - sequence: '10'
+                permit:
+                  std-ace:
+                    ipv4-address-prefix: 192.133.176.0
+                    ipv4-prefix: 192.133.176.0
+                    mask: 0.0.15.255
+              - sequence: '20'
+                permit:
+                  std-ace:
+                    ipv4-address-prefix: 173.38.117.64
+                    ipv4-prefix: 173.38.117.64
+                    mask: 0.0.0.31
+              - sequence: '30'
+                permit:
+                  std-ace:
+                    ipv4-address-prefix: 72.163.2.224
+                    ipv4-prefix: 72.163.2.224
+                    mask: 0.0.0.31
+              - sequence: '40'
+                permit:
+                  std-ace:
+                    ipv4-address-prefix: 128.107.241.160
+                    ipv4-prefix: 128.107.241.160
+                    mask: 0.0.0.31
+        Cisco-IOS-XE-acl:extended:
+          - name: MERAKI_VTY_IN
+            access-list-seq-rule:
+              - sequence: '10'
+                ace-rule:
+                  action: permit
+                  protocol: tcp
+                  host-address: 18.232.244.158
+                  host: 18.232.244.158
+                  dst-any:
+                  - 
+                  dst-eq: 2222
+              - sequence: '20'
+                ace-rule:
+                  action: deny
+                  protocol: tcp
+                  any:
+                  - 
+                  dst-any:
+                  - 
+          - name: MERAKI_VTY_OUT
+            access-list-seq-rule:
+              - sequence: '10'
+                ace-rule:
+                  action: permit
+                  protocol: tcp
+                  any:
+                  - 
+                  dst-host-address: 18.232.244.158
+                  dst-host: 18.232.244.158
+                  dst-eq: 2022
+              - sequence: '20'
+                ace-rule:
+                  action: deny
+                  protocol: tcp
+                  any:
+                  - 
+                  dst-any:
+                  - 
+      Cisco-IOS-XE-http:http:
+        server: false
+        secure-server: true
+        client:
+          source-interface: GigabitEthernet0/0
+      Cisco-IOS-XE-igmp:igmp:
+        snooping:
+          querier: {}
+      Cisco-IOS-XE-nbar:nbar:
+        classification:
+          dns:
+            classify-by-domain:
+              - 
+    Cisco-IOS-XE-http:http:
+      authentication:
+        local:
+          - 
+      server: false
+      secure-server: true
+    cdp:
+      Cisco-IOS-XE-cdp:run:
+        - 
+    logging:
+      host:
+        ipv4-host-list:
+          - ipv4-host: 18.232.244.158
+      hostip: 18.232.244.158
+    aaa:
+      Cisco-IOS-XE-aaa:new-model:
+        - 
+      Cisco-IOS-XE-aaa:authentication:
+        login:
+          - name: default
+            a1:
+              local:
+                - 
+          - name: MERAKI
+            a1:
+              local:
+                - 
+      Cisco-IOS-XE-aaa:authorization:
+        exec:
+          - name: MERAKI
+            a1:
+              local:
+                - 
+          - name: default
+            a1:
+              local:
+                - 
+      Cisco-IOS-XE-aaa:session-id: common
+    login:
+      on-success:
+        log: {}
+    redundancy:
+      mode: sso
+    spanning-tree:
+      Cisco-IOS-XE-spanning-tree:extend:
+        system-id:
+          - 
+      Cisco-IOS-XE-spanning-tree:mode: rapid-pvst
+    system:
+      Cisco-IOS-XE-switch:mtu:
+        size: 9198
+    monitor:
+      session:
+        - id: 1
+          destination:
+            interface:
+              - name: Te1/0/39
+          source:
+            interface:
+              - name: Te1/0/1
+    ntp:
+      Cisco-IOS-XE-ntp:server:
+        server-list:
+        - ip-address: 199.66.190.253
+          burst: false
+          iburst: false
+        - ip-address: 199.66.190.254
+          burst: false
+          iburst: false
+    line:
+      console:
+        - first: '0'
+          stopbits: '1'
+      vty:
+        - first: 0
+          last: 15
+          access-class:
+            acccess-list:
+            - direction: in
+              access-list: mgmt
+              vrf-also:
+                - 
+          transport:
+            input:
+              input:
+                - ssh
+    Cisco-IOS-XE-lldp:lldp:
+      run:
+        - 

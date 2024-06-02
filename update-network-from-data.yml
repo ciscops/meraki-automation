@@ -1,0 +1,49 @@
+- hosts: network
+  connection: local
+  gather_facts: no
+  tasks:
+    - block:
+      - name: Get Curret Group Policy
+        cisco.meraki.networks_group_policies_info:
+          meraki_base_url: "{{ meraki_base_url }}"
+          networkId: "{{ networkId }}"
+        register: group_policies_info
+
+      - name: Update Group Policy
+        # debug:
+        #   msg: "{{ item | combine(add_keys) }}"
+        cisco.meraki.networks_group_policies: "{{ combined_item }}"
+        loop: '{{ meraki_data["networks"]["groupPolicies"] }}'
+        vars:
+          add_keys:
+            state: present
+            meraki_base_url: "{{ meraki_base_url }}"
+            networkId: "{{ networkId }}"
+            # Add groupPolicyId from the info if it is there
+            groupPolicyId: '{{ group_policy_lookup[item["name"]] | default(omit) }}'
+          combined_item: "{{ item | combine(add_keys) }}"
+          group_policy_lookup: "{{ group_policies_info.meraki_response | jq_filter('map({(.name): (.groupPolicyId | tonumber)}) | add') | first }}"
+      tags:
+        - group_policy
+
+    - name: Update Target Network Wireless SSIDs
+      cisco.meraki.networks_wireless_ssids: "{{ item | combine(add_keys) }}"
+      loop: '{{ meraki_data["networks"]["wireless"]["ssids"] }}'
+      vars:
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_base_url }}"
+          networkId: "{{ networkId }}"
+      tags:
+        - wireless
+
+    - name: Update Access Policies
+      cisco.meraki.networks_switch_access_policies: "{{ item | combine(add_keys) }}"
+      loop: '{{ meraki_data["networks"]["switch"]["accessPolicies"] }}'
+      vars:
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_base_url }}"
+          networkId: "{{ networkId }}"
+      tags:
+        - access_policies

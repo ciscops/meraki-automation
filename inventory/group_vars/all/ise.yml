@@ -1,0 +1,1 @@
+radius_secret: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.radius_secret', nested=true) }}"

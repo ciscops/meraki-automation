@@ -1,0 +1,57 @@
+- hosts: all
+  connection: local
+  gather_facts: no
+  run_once: true
+  tasks:
+    - set_fact:
+        proto_network_id: "{{ hostvars[proto_network].networkId }}"
+
+    - name: Check to make sure that we found the proto network information
+      ansible.builtin.assert:
+        that:
+          - proto_network_id
+        msg: "Did not find proto network {{ proto_network }}"
+
+    - name: Get Radius Secret
+      set_fact:
+        radius_secret: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.radius_secret', nested=true) }}"
+
+    - name: Get Prototype Network Wireless SSIDs
+      cisco.meraki.networks_wireless_ssids_info:
+        meraki_base_url: "{{ meraki_secrets.MERAKI_BASE_URL }}"
+        networkId: "{{ proto_network_id }}"
+      register: networks_wireless_ssids_result
+
+    - name: Process output
+      set_fact:
+        ssid_data: "{{ networks_wireless_ssids_result.meraki_response | jq_filter(jq_filter) | first }}"
+      vars:
+        jq_filter: "map(select(.enabled == true) | del({{ del_keys | join(',') }}) + {{ add_keys | to_json }})"
+        del_keys:
+          - ".ssidAdminAccessible"
+          - ".adminSplashUrl"
+          - ".splashTimeout"
+          - ".radiusAccountingServers"
+          - ".radiusServers"
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_secrets.MERAKI_BASE_URL }}"
+          networkId: "{{ networkId }}"
+          radiusServers:
+            - host: 100.100.80.27
+              port: 1812
+              secret: "{{ radius_secret }}"
+          radiusAccountingServers:
+            - host: 100.100.80.27
+              port: 1813
+              secret: "{{ radius_secret }}"
+
+- hosts: network
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Update Target Network Wireless SSIDs
+      cisco.meraki.networks_wireless_ssids: "{{ item }}"
+      loop: "{{ ssid_data }}"
+
+

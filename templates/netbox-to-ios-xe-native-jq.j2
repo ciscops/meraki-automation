@@ -1,0 +1,81 @@
+# First, we put each of the interface items into the correct format
+.interfaces |= map_values(
+    {
+        interface_type: (.name | capture("(?<interface_type>^[A-z]+)").interface_type),
+        name: (.name | capture("(?<name>[0-9./]+$)").name),
+        description: (if .description | length > 0 then .description else null end),
+        vrf: (
+            if (.vrf |  length > 0) then
+                {
+                    forwarding: .vrf.name
+                }
+            else
+                null
+            end
+        ),
+        shutdown: (if .enabled then null else [ null ] end),
+        encapsulation: (
+            if (.untagged_vlan | length > 0) then
+                {
+                    "dot1Q": {
+                        "vlan-id": .untagged_vlan.vid
+                    }
+                }
+            else
+                {}
+            end
+        ),
+        ip: (
+            # Check if ip_addresses array is not empty and contains IPv4 addresses
+            if (.ip_addresses | length > 0) and any(.ip_addresses[].family.value; . == 4) then
+                {
+                    address: {
+                        primary: (
+                            # Extract IPv6 addresses and prefix lengths
+                            .ip_addresses[] | select(.family.value == 4) | {
+                                address: (.address | split("/")[0]),
+                                mask: (
+                                    if .address | split("/")[1] | tonumber > 23 then
+                                        "255.255.255." + (256 - pow(2; 32 - (.address | split("/")[1] | tonumber)) | tostring)
+                                    elif .address | split("/")[1] | tonumber > 15 then
+                                        "255.255." + (256 - pow(2; 24 - (.address | split("/")[1] | tonumber)) | tostring) + ".0"
+                                    elif .address | split("/")[1] | tonumber > 7 then
+                                        "255." + (256 - pow(2; 16 - (.address | split("/")[1] | tonumber)) | tostring) + ".0.0"
+                                    else
+                                        (256 - pow(2; 8 - (.address | split("/")[1] | tonumber)) | tostring) + ".0.0.0"
+                                    end
+                                )
+                            }
+                        )
+                    }
+                }
+            else
+                null # Empty object if no IPv4 addresses
+            end
+        ),
+        ipv6: (
+            # Check if ip_addresses array is not empty and contains IPv6 addresses
+            if (.ip_addresses | length > 0) and any(.ip_addresses[].family.value; . == 6) then
+                {
+                    address: {
+                        "prefix-list": [
+                            # Extract IPv6 addresses and prefix lengths
+                            .ip_addresses[] | select(.family.value == 6) | {
+                                prefix: .address
+                            }
+                        ]
+                    }
+                }
+            else
+                null # Empty object if no IPv6 addresses
+            end
+        )
+    # Only include attributes with non-null values    
+    } | with_entries(select(.value != null))
+# Then we organize by interface type.  I am not smart enough yet to figure out how to combine into one action.
+) | reduce .interfaces[] as $interface (
+    {};
+    .[$interface.interface_type] += [$interface | del(.interface_type)]
+) | {
+    "Cisco-IOS-XE-native:interface": .
+}

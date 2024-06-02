@@ -1,0 +1,65 @@
+mdd_tags:
+  - meraki
+mdd_data:
+  meraki:
+    networks:
+      wireless:
+        ssids:
+          - number: 0
+            name: cpn
+            enabled: true
+            splashPage: Cisco ISE
+            ssidAdminAccessible: false
+            authMode: 8021x-radius
+            dot11w:
+              enabled: false
+              required: false
+            dot11r:
+              enabled: false
+              adaptive: false
+            encryptionMode: wpa-eap
+            wpaEncryptionMode: WPA2 only
+            radiusServers:
+              - host: 100.100.80.27
+                port: 1812
+                id: '686235993221116465'
+                radsecEnabled: false
+                openRoamingCertificateId: null
+                caCertificate: null
+            radiusAccountingEnabled: true
+            radiusAccountingServers:
+              - host: 100.100.80.27
+                port: 1813
+                id: '686235993221116466'
+                radsecEnabled: false
+                openRoamingCertificateId: null
+                caCertificate: null
+            radiusTestingEnabled: false
+            radiusServerTimeout: 1
+            radiusServerAttemptsLimit: 3
+            radiusFallbackEnabled: false
+            radiusAccountingInterimInterval: 600
+            radiusProxyEnabled: false
+            radiusCoaEnabled: true
+            radiusCalledStationId: '$NODE_MAC$:$VAP_NAME$'
+            radiusAuthenticationNasId: '$NODE_MAC$:$VAP_NUM$'
+            radiusAttributeForGroupPolicies: Filter-Id
+            ipAssignmentMode: Bridge mode
+            useVlanTagging: false
+            radiusOverride: false
+            adminSplashUrl: null
+            splashTimeout: 1440 minutes
+            walledGardenEnabled: false
+            minBitrate: 11
+            bandSelection: Dual band operation
+            perClientBandwidthLimitUp: 0
+            perClientBandwidthLimitDown: 0
+            perSsidBandwidthLimitUp: 0
+            perSsidBandwidthLimitDown: 0
+            mandatoryDhcpEnabled: false
+            lanIsolationEnabled: false
+            visible: true
+            availableOnAllAps: true
+            availabilityTags: []
+            speedBurst:
+              enabled: false

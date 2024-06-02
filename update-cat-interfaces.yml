@@ -1,0 +1,32 @@
+- hosts: platforms_cat8000
+  connection: local
+  gather_facts: no
+  roles:
+    - ciscops.mdd.data
+  tasks:
+    - debug:
+        var: payload
+      vars:
+        payload:
+          "Cisco-IOS-XE-native:interface": '{{ mdd_data["Cisco-IOS-XE-native:native"]["interface"] }}'
+
+    - name: Configure Interfaces
+      uri:
+        url: "https://{{ ansible_host }}/restconf/data/Cisco-IOS-XE-native:native/interface"
+        user: "{{ lookup('amazon.aws.aws_secret', 'cpn/restconf.username', nested=true) }}"
+        password: "{{ lookup('amazon.aws.aws_secret', 'cpn/restconf.password', nested=true) }}"
+        method: PUT
+        headers:
+          Content-Type: 'application/yang-data+json'
+          Accept:
+            application/yang-data+json,
+            application/yang-data.errors+json
+        body_format: json
+        body: "{{ payload | to_json }}"
+        validate_certs: false
+        status_code:
+         - 200
+         - 204
+      vars:
+        payload:
+          "Cisco-IOS-XE-native:interface": '{{ mdd_data["Cisco-IOS-XE-native:native"]["interface"] }}'

@@ -1,0 +1,4 @@
+---
+plugin: gql_inventory
+api_endpoint: https://netbox2.aws.ciscops.net
+token: 7d44db7af855c058e90cb29327280b62c3c8a203

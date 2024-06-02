@@ -1,0 +1,66 @@
+- hosts: MS
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Get Switch Port Config Information
+      cisco.meraki.devices_switch_ports_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        serial: "{{ serial }}"
+      register: switch_port_config_info
+
+    - name: Get Switch Port Status Information
+      cisco.meraki.devices_switch_ports_statuses_info:
+        meraki_base_url: "{{ meraki_base_url }}"
+        serial: "{{ serial }}"
+      register: switch_port_status_info
+
+    - name: Find Infrastructure Ports
+      set_fact:
+        infra_ports: "{{ meraki_connected_ports + infra_tagged_ports | unique }}"
+      vars:
+        meraki_connected_ports: >-
+          {{
+            switch_port_status_info.meraki_response | selectattr('lldp.systemDescription', 'defined')
+                            | selectattr('lldp.systemDescription', 'search', '^Meraki')
+                            | map(attribute='portId')
+                            | list
+          }}
+        infra_tagged_ports: >-
+          {{
+            switch_port_config_info.meraki_response | selectattr('tags', 'defined')
+                            | selectattr('tags', 'contains', 'infra')
+                            | map(attribute='portId')
+                            | list
+          }}
+
+    - name: Find Client Ports
+      set_fact:
+        client_ports: >-
+          {{
+            switch_port_config_info.meraki_response
+                            | map(attribute='portId')
+                            | list
+                            | difference(infra_ports)
+          }}
+
+    - name: Update Infrastructure Ports
+      cisco.meraki.devices_switch_ports: "{{ template | combine(add_keys) }}"
+      loop: "{{ infra_ports }}"
+      vars:
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_base_url }}"
+          serial: "{{ serial }}"
+          portId: "{{ item }}"
+        template: "{{ port_templates['infra'] }}"
+
+    - name: Update Client Ports
+      cisco.meraki.devices_switch_ports: "{{ template | combine(add_keys) }}"
+      loop: "{{ client_ports }}"
+      vars:
+        add_keys:
+          state: present
+          meraki_base_url: "{{ meraki_base_url }}"
+          serial: "{{ serial }}"
+          portId: "{{ item }}"
+        template: "{{ port_templates['default'] }}"

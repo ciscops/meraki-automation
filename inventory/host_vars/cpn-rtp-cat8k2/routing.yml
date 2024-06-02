@@ -1,0 +1,138 @@
+---
+Cisco-IOS-XE-native:native:
+  vrf:
+    definition:
+      - name: Mgmt-vrf
+        address-family:
+          ipv4: {}
+          ipv6: {}
+      - name: mx-sdwan-dmz
+        rd: '1:1'
+        address-family:
+          ipv4: {}
+          ipv6: {}
+  ip:
+    prefix-lists:
+      prefixes:
+        - name: default
+          'no': 5
+          action: permit
+          ip: 0.0.0.0/0
+    prefix-list:
+      prefixes:
+        - name: default
+          seq:
+          - 'no': 5
+            action: permit
+            ip: 0.0.0.0/0
+    route:
+      ip-route-interface-forwarding-list:
+        - prefix: 0.0.0.0
+          mask: 0.0.0.0
+          fwd-list:
+          - fwd: 199.66.190.1
+        - prefix: 18.232.244.158
+          mask: 255.255.255.255
+          fwd-list:
+            - fwd: Null0
+        - prefix: 192.133.189.0
+          mask: 255.255.255.0
+          fwd-list:
+            - fwd: Null0
+      vrf:
+        - name: Mgmt-vrf
+          ip-route-interface-forwarding-list:
+            - prefix: 0.0.0.0
+              mask: 0.0.0.0
+              fwd-list:
+                - fwd: 192.133.177.1
+    routing-conf:
+      routing: true
+  ipv6:
+    unicast-routing:
+      - 
+  route-map:
+    - name: cpn-meraki-out
+      Cisco-IOS-XE-route-map:route-map-without-order-seq:
+        - seq_no: 10
+          operation: deny
+          match:
+            ip:
+              address:
+                prefix-list:
+                - default
+        - seq_no: 20
+          operation: permit
+  router:
+    Cisco-IOS-XE-bgp:bgp:
+    - id: 11017
+      bgp:
+        default:
+          ipv4-unicast: false
+        log-neighbor-changes: true
+      neighbor:
+      - id: 192.133.189.6
+        remote-as: 64513
+        description: cpn-rtp-fed-mx1
+      - id: 192.133.189.9
+        remote-as: 11017
+        description: cpn-rtp-cat8k1
+        update-source:
+          interface:
+            Vlan: 105
+      - id: 192.133.189.102
+        remote-as: 64512
+        description: cpn-sdwan-mx1
+      - id: 2620:41:0:1::a
+        remote-as: 11017
+        description: cpn-rtp-cat8k1
+        update-source:
+          interface:
+            Vlan: 105
+      - id: 2620:41:0:2::b
+        remote-as: 64512
+        description: cpn-sdwan-mx1
+      - id: 2620:41:0:3::b
+        remote-as: 64513
+        description: cpn-fed-mx1
+      address-family:
+        no-vrf:
+          ipv4:
+          - af-name: unicast
+            ipv4-unicast:
+              neighbor:
+              - id: 192.133.189.6
+                activate:
+                  - 
+                remove-private-as: {}
+              - id: 192.133.189.9
+                activate:
+                - 
+              - id: 192.133.189.102
+                activate:
+                  - 
+                remove-private-as: {}
+                route-map:
+                  - inout: out
+                    route-map-name: cpn-meraki-out
+              network:
+                no-mask:
+                  - number: 192.133.189.0
+          ipv6:
+            - af-name: unicast
+              ipv6-unicast:
+                neighbor:
+                  - id: 2620:41:0:1::a
+                    activate:
+                      - 
+                  - id: 2620:41:0:2::b
+                    activate:
+                      - 
+                    remove-private-as: {}
+                  - id: 2620:41:0:3::b
+                    activate:
+                      - 
+                    remove-private-as: {}
+                network:
+                  - number: 2620:41:0:2::/64
+                  - number: 2620:41:0:3::/64
