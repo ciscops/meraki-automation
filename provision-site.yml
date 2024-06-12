@@ -20,6 +20,11 @@
         state: present    
       register: netbox_site_results
 
+    - debug:
+        msg: "{{ query('netbox.netbox.nb_lookup', 'prefixes', api_filter=nb_filter) }}"
+      vars:
+        nb_filter: "site={{ site_name }} address_family=ipv4"
+
     - set_fact:
         netbox_prefixes: "{{ query('netbox.netbox.nb_lookup', 'prefixes', api_filter=nb_filter) | jq_filter(jq_filter) | first }}"
         proto_network_info: "{{ lookup('meraki_network', proto_network )  }}"

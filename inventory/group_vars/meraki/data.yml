@@ -51,7 +51,8 @@ meraki_data:
           radiusAuthenticationNasId: '$NODE_MAC$:$VAP_NUM$'
           radiusAttributeForGroupPolicies: "Airespace-ACL-Name"
           ipAssignmentMode: Bridge mode
-          useVlanTagging: false
+          useVlanTagging: true
+          defaultVlanId: 10
           radiusOverride: false
           # adminSplashUrl: null
           # splashTimeout: 1440 minutes

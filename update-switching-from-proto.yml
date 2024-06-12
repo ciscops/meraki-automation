@@ -2,6 +2,8 @@
   connection: local
   gather_facts: no
   run_once: true
+  vars:
+    proto_network: "cpn-gov-arlington"
   tasks:
     - set_fact:
         proto_network_id: "{{ hostvars[proto_network].networkId }}"

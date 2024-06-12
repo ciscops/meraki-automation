@@ -1,4 +1,4 @@
-- hosts: platforms_cat8000
+- hosts: cat8000
   connection: local
   gather_facts: no
   roles:

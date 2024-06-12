@@ -1,3 +1,6 @@
+---
+mdd_tags:
+  - iosxe
 mdd_data:
   Cisco-IOS-XE-native:native:
     vrf:

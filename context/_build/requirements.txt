@@ -1,0 +1,11 @@
+ansible
+pytz
+botocore
+boto3
+ciscoisesdk
+bcrypt
+passlib
+paramiko
+jmespath
+pynetbox
+jq

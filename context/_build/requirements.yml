@@ -1,0 +1,4 @@
+collections:
+  - name: cisco.meraki
+  - name: cisco.ise
+  - name: netbox.netbox

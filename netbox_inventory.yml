@@ -1,17 +1,17 @@
 plugin: netbox.netbox.nb_inventory
 # api_endpoint: http://localhost:8000
 # validate_certs: False 
-# config_context: False 
+config_context: False 
 # query_filters:
 #   - role: network-edge-router
 # device_query_filters:
   # - platform: 'mx'
   # - tenant__n: internal
-compose:
-  # ansible_host: primary_ip
-  ansible_network_os: platform.slug
-  netbox_site: site.slug
-# group_names_raw: False
+# compose:
+#   # ansible_host: primary_ip
+#   ansible_network_os: platform.slug
+#   netbox_site: site.slug
+group_names_raw: True
 group_by:
   - sites
   - region
