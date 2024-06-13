@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 meraki_inventory.py - Generates an Ansible dynamic inventory using NMAP
 Author
