@@ -1,32 +1,44 @@
-- hosts: MX,MS,MR
+- hosts: network
   connection: local
   gather_facts: no
   tasks:
-    - name: Get ISE Secrets from AWS
-      set_fact:
-        ise_hostname: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_hostname', nested=true) }}"
-        ise_username: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_username', nested=true) }}"
-        ise_password: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.ise_password', nested=true) }}"
-        radius_secret: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise.radius_secret', nested=true) }}"
+    - name: Create Network Device Group
+      cisco.ise.network_device_group:
+        ise_hostname: "{{ ise_secrets.ise_hostname }}"
+        ise_username: "{{ ise_secrets.ise_username }}"
+        ise_password: "{{ ise_secrets.ise_password }}"
+        ise_verify: false
+        state: present
+        # description: string
+        name: 'Location#All Locations#{{ inventory_hostname }}'
+        othername: "Location"
+      vars:
+        ise_secrets: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise') }}"
 
-    # - debug:
-    #     msg: "{{ inventory_hostname }}, Address: {{ ansible_host | default('unknown')}}"
-    #   when: primary_ip and primary_ip is ansible.utils.ipv4
-
+- hosts: MX,MS,MR,CW
+  connection: local
+  gather_facts: no
+  tasks:
     - name: Create Network Device
       when: primary_ip and primary_ip is ansible.utils.ipv4
       cisco.ise.network_device:
-        ise_hostname: "{{ ise_hostname }}"
-        ise_username: "{{ ise_username }}"
-        ise_password: "{{ ise_password }}"
+        ise_hostname: "{{ ise_secrets.ise_hostname }}"
+        ise_username: "{{ ise_secrets.ise_username }}"
+        ise_password: "{{ ise_secrets.ise_password }}"
         ise_verify:   false
         ise_debug:    false
-        state:        "present"
+        state:        present
         name:         "{{ inventory_hostname }}"
+        modelName:    "{{ model | default(omit) }}"
+        softwareVersion: "{{ firmware | default(omit) }}"
+        NetworkDeviceGroupList:
+          - 'Location#All Locations#{{ network_name }}'
+          - 'Device Type#All Device Types#{{ device_platform }}'
         NetworkDeviceIPList:          # list of dicts
           - ipaddress: "{{ primary_ip }}"
             mask: 32
         authenticationSettings:
           networkProtocol: "RADIUS"
-          radiusSharedSecret: "{{ radius_secret }}"
-
+          radiusSharedSecret: "{{ ise_secrets.radius_secret }}"
+      vars:
+        ise_secrets: "{{ lookup('amazon.aws.aws_secret', 'cpn/ise') }}"

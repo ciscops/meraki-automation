@@ -1,0 +1,10 @@
+- hosts: meraki:!network
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Normalize Device Name
+      cisco.meraki.devices:
+        meraki_base_url: "{{ meraki_base_url }}"
+        state: present
+        name: "{{ network_name }}-{{ device_platform }}{{ serial.split('-')[-1] }}"
+        serial: "{{ serial }}"

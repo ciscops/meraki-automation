@@ -99,9 +99,7 @@ if __name__ == "__main__":
     org_radius_servers = get_org_radius_servers(meraki_org_id, meraki_api_key)
     for network in meraki_networks:
         network_by_id[network["id"]] = network
-        meraki_devices = dashboard.networks.getNetworkDevices(
-            network["id"]
-        )
+
         # Treat the network as a devices since it is a single unit that can be configured
         # network_device_name = "network_" + network["name"]
         network_device_name = network["name"]
@@ -122,46 +120,55 @@ if __name__ == "__main__":
         for product_type in network["productTypes"]:
             add_to_group(product_type, network_device_name)
 
-        # Iterate through devices
-        for device in meraki_devices:
-            if device["name"]:
-                device_name = device["name"]
-            else:
-                device_name = device["serial"]
+    # Iterate through devices
+    meraki_devices = dashboard.organizations.getOrganizationDevices(
+        organizationId=meraki_org_id, total_pages='all'
+    )
+    for device in meraki_devices:
+        if device["name"]:
+            device_name = device["name"]
+        else:
+            device_name = device["serial"]
 
-            # Add to hostvars
-            hostvars[device_name] = device
+        # Add to hostvars
+        hostvars[device_name] = device
 
-            if "lanIp" in device:
-                primary_ip = device["lanIp"]
-            elif "wan1Ip" in device:
-                primary_ip = device["wan1Ip"]
-            else:
-                primary_ip = None
-            hostvars[device_name]["primary_ip"] = primary_ip
+        # Group by Platform
+        device_platform, device_type = get_device_type(device["model"])
+        hostvars[device_name]["device_type"] = device_type
+        hostvars[device_name]["device_platform"] = device_platform
+        add_to_group(device_platform, device_name)
+        add_to_group(device_type, device_name)
 
-            # Group by Platform
-            device_platform, device_type = get_device_type(device["model"])
-            hostvars[device_name]["device_type"] = device_type
-            hostvars[device_name]["device_platform"] = device_platform
-            add_to_group(device_platform, device_name)
-            add_to_group(device_type, device_name)
+        primary_ip = None
+        if device_type == "wireless" or device_type == "switch":
+            primary_ip = device["lanIp"]
+        elif  device_type == "appliance":
+            if not device_platform.startswith("V"):
+                if device["wan1Ip"]:
+                    primary_ip = device["wan1Ip"]
+                elif device["wan2Ip"]:
+                    primary_ip = device["wan2Ip"]
+        hostvars[device_name]["primary_ip"] = primary_ip
+                
 
-            # Group by Network
-            add_to_group(network["name"], device_name)
+        # Group by Network
+        hostvars[device_name]["network_name"] = network_by_id[device["networkId"]]["name"]
+        add_to_group(hostvars[device_name]["network_name"], device_name)
+        
 
-            # Group by Model
-            add_to_group(device["model"], device_name)
+        # Group by Model
+        add_to_group(device["model"], device_name)
 
-            # Add the MX "W"s and "Z"s to the wireless group
-            if device["model"].endswith("W"):
-                add_to_group("wireless", device_name)
+        # Add the MX "W"s and "Z"s to the wireless group
+        if device["model"].endswith("W"):
+            add_to_group("wireless", device_name)
 
-            # Group by Tag
-            # Each device gets it's tags plus the network's tags
-            device_tags = device["tags"] + network_by_id[device["networkId"]]["tags"]
-            for tag in device_tags:
-                add_to_group(tag, device_name)
+        # Group by Tag
+        # Each device gets it's tags plus the network's tags
+        device_tags = device["tags"] + network_by_id[device["networkId"]]["tags"]
+        for tag in device_tags:
+            add_to_group(tag, device_name)
 
     data = {
         "_meta": {

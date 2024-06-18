@@ -2,7 +2,7 @@
  "collection_info": {
   "namespace": "cisco",
   "name": "ise",
-  "version": "2.9.0",
+  "version": "2.9.2",
   "authors": [
    "Rafael Campos <rcampos@altus.cr>",
    "William Astorga <wastorga@altus.cr>",
@@ -32,7 +32,7 @@
   "name": "FILES.json",
   "ftype": "file",
   "chksum_type": "sha256",
-  "chksum_sha256": "36dc519d00b4a84f1bf8d6a008f46ec6a5511e65fb9aa046e470ee136ec1d101",
+  "chksum_sha256": "03e8aa8c0a512c59183f007d803261884cf58f7ba74e3bb252336faa214d71bb",
   "format": 1
  },
  "format": 1
